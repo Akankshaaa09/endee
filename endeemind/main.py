@@ -1,46 +1,58 @@
-import requests
+from endee import Endee
 from sentence_transformers import SentenceTransformer
-
-BASE = "http://localhost:8080/api/v1/index/memories"
 
 print("Loading embedding model...")
 model = SentenceTransformer("all-MiniLM-L6-v2")
 
+client = Endee()
+
+INDEX_NAME = "memories"
+DIMENSION = 384
+
+# Create index safely (ignore if exists)
+try:
+    print("Ensuring Endee index exists...")
+    client.create_index(
+        name=INDEX_NAME,
+        dimension=DIMENSION,
+        space_type="cosine",
+        precision="float16"
+    )
+except Exception as e:
+    print("Index already exists. Continuing...")
+
+index = client.get_index(name=INDEX_NAME)
 
 def embed(text):
     return model.encode(text).tolist()
 
-
 def store(text, id):
-    payload = {
-        "vectors": [
-            {
-                "id": id,
-                "vector": embed(text),   # ← THIS IS THE FIX
-                "metadata": {"text": text}
-            }
-        ]
-    }
+    vector = embed(text)
 
-    r = requests.post(f"{BASE}/insert", json=payload)
+    index.upsert([
+        {
+            "id": id,
+            "vector": vector,
+            "meta": {"text": text}
+        }
+    ])
 
-    print("\nStored:", text)
-    print("Status:", r.status_code)
-    print(r.text)
-
+    print("Stored:", text)
 
 def search(query):
-    payload = {
-        "query_vector": embed(query),   # ← THIS IS THE FIX
-        "k": 3
-    }
+    vector = embed(query)
 
-    r = requests.post(f"{BASE}/search", json=payload)
+    results = index.query(
+        vector=vector,
+        top_k=3
+    )
 
-    print("\nResults:")
-    print(r.text)
+    print("\nTop Matches:")
+    for item in results:
+        print("-", item["meta"]["text"], "| score:", round(item["similarity"], 4))
 
 
+# Demo data
 memories = [
     "Transformers use attention",
     "Vector databases store embeddings",
@@ -51,11 +63,8 @@ memories = [
 for i, m in enumerate(memories):
     store(m, f"id{i}")
 
-
 while True:
-    q = input("\nAsk something (or exit): ")
-
+    q = input("\nAsk something (type exit to quit): ")
     if q == "exit":
         break
-
     search(q)
