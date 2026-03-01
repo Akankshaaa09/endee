@@ -9,7 +9,7 @@ client = Endee()
 INDEX_NAME = "memories"
 DIMENSION = 384
 
-# Create index safely (ignore if exists)
+# Create index
 try:
     print("Ensuring Endee index exists...")
     client.create_index(
