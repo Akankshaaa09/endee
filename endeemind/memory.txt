@@ -1,0 +1,9 @@
+Transformers use self-attention to process sequential data.
+
+Vector databases store embeddings for semantic search.
+
+Overfitting occurs when a model memorizes training data.
+
+Embeddings represent text as numerical vectors.
+
+Retrieval Augmented Generation improves LLM accuracy.
